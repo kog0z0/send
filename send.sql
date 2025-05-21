@@ -1,19 +1,3 @@
-/*
- Navicat Premium Data Transfer
-
- Source Server         : 阿里云
- Source Server Type    : MySQL
- Source Server Version : 80024
- Source Host           : 101.37.237.70:3306
- Source Schema         : send
-
- Target Server Type    : MySQL
- Target Server Version : 80024
- File Encoding         : 65001
-
- Date: 21/05/2025 17:24:57
-*/
-
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -210,5 +194,47 @@ CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `active_deliveries` AS se
 -- ----------------------------
 DROP VIEW IF EXISTS `completed_deliveries`;
 CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `completed_deliveries` AS select `lo`.`order_id` AS `order_id`,`lo`.`from_warehouse` AS `warehouse`,`dt`.`disp_id` AS `disp_id`,`dt`.`estimated_time` AS `estimated_time`,`d`.`dispatcher_phone` AS `dispatcher_phone` from ((`logistics_order` `lo` join `delivery_tracking` `dt` on((`lo`.`order_id` = `dt`.`order_id`))) join `dispatcher` `d` on((`dt`.`disp_id` = `d`.`dispatcher_id`))) where (`lo`.`checked` = 2);
+
+-- ----------------------------
+-- Triggers structure for table delivery_tracking
+-- ----------------------------
+DROP TRIGGER IF EXISTS `delivery_tracking_insert`;
+delimiter ;;
+CREATE TRIGGER `delivery_tracking_insert` AFTER INSERT ON `delivery_tracking` FOR EACH ROW BEGIN
+  
+  UPDATE logistics_order 
+  SET checked = 1 
+  WHERE order_id = NEW.order_id;
+END
+;;
+delimiter ;
+
+-- ----------------------------
+-- Triggers structure for table logistics_order
+-- ----------------------------
+DROP TRIGGER IF EXISTS `order_insert`;
+delimiter ;;
+CREATE TRIGGER `order_insert` AFTER INSERT ON `logistics_order` FOR EACH ROW BEGIN
+  
+  UPDATE transport_type_stat 
+  SET order_count = order_count + 1 
+  WHERE transport_type = NEW.transport_type;
+END
+;;
+delimiter ;
+
+-- ----------------------------
+-- Triggers structure for table logistics_order
+-- ----------------------------
+DROP TRIGGER IF EXISTS `update_warehouse_capacity`;
+delimiter ;;
+CREATE TRIGGER `update_warehouse_capacity` AFTER INSERT ON `logistics_order` FOR EACH ROW BEGIN
+  
+  UPDATE warehouse 
+  SET storage_capacity = storage_capacity - NEW.size 
+  WHERE warehouse_name = NEW.from_warehouse;
+END
+;;
+delimiter ;
 
 SET FOREIGN_KEY_CHECKS = 1;
